@@ -1,0 +1,81 @@
+{
+    "name": "product_catalog_v1",
+    "strict": true,
+    "schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "type": "string",
+          "description": "One concise, embedding-friendly paragraph describing the central product only. No hedging; no background/photo commentary."
+        },
+        "packaging_enum": {
+          "type": "string",
+          "enum": [
+            "Box",
+            "Carton",
+            "Carton (Aseptic)",
+            "Can",
+            "Metal Tin",
+            "Canister",
+            "Glass Bottle",
+            "Plastic Bottle",
+            "Jug",
+            "Glass Jar",
+            "Plastic Jar",
+            "Bottle (Unspecified)",
+            "Jar (Unspecified)",
+            "Tub",
+            "Cup",
+            "Tray",
+            "Rigid Plastic Container",
+            "Clamshell",
+            "Pouch",
+            "Paper Bag",
+            "Plastic Bag",
+            "Mesh/Net Bag",
+            "Bag (Unspecified)",
+            "Wrapper/Film",
+            "Tube",
+            "Blister Pack",
+            "Stick (Twist-up)",
+            "Sachet/Packet",
+            "Sleeve",
+            "Loose / No Packaging",
+            "Unknown/Not Visible",
+            "Other/Unclear"
+          ],
+          "description": "Primary retail packaging type for the central product, chosen from the fixed enum."
+        },
+        "primary_color": {
+          "type": "string",
+          "pattern": "^#[0-9A-F]{6}$",
+          "description": "Dominant base packaging color as an uppercase #RRGGBB hex code."
+        },
+        "secondary_color": {
+          "type": "string",
+          "pattern": "^#[0-9A-F]{6}$",
+          "description": "Second most visible packaging color as an uppercase #RRGGBB hex code."
+        },
+        "tertiary_color": {
+          "type": "string",
+          "description": "Third most visible packaging color as an uppercase #RRGGBB hex code. If not applicable, use empty string.",
+          "maxLength": 7,
+          "minLength": 0
+        },
+        "popper_color": {
+          "type": "string",
+          "pattern": "^#[0-9A-F]{6}$",
+          "description": "High-contrast accent color used as a selling element (badge/logo/flavor marker) as an uppercase #RRGGBB hex code."
+        }
+      },
+      "required": [
+        "description",
+        "packaging_enum",
+        "primary_color",
+        "secondary_color",
+        "tertiary_color",
+        "popper_color"
+      ]
+    }
+  }

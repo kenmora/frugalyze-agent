@@ -38,8 +38,10 @@ You already have `.env`. Example keys are in `.env.example`.
 ## Run locally
 
 ```powershell
-uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+.\scripts\run-dev.ps1
 ```
+
+This avoids Windows/OneDrive reload loops by watching only `app/` and `static/`.
 
 Then open:
 - http://127.0.0.1:8000
@@ -52,8 +54,11 @@ Then open:
   - `/health` health endpoint
   - `/api/chat` workflow:
     - classify input (`gpt-5-nano`) into `URL_PROVIDED` or `NO_URL`
-    - when URL is present, analyze image content from the URL
-    - returns a short description of what's in the image
+    - when URL is present, analyze image content from the URL using:
+      - `prompts/image_classifier/system.txt`
+      - `prompts/image_classifier/schema.json`
+      - `prompts/image_classifier/config.yaml`
+    - returns JSON output (pretty-rendered in UI)
 - `static/index.html`: lightweight chat UI for local testing
 - `requirements.txt`: core dependencies, including OpenAI Agents SDK and ChatKit
 

@@ -52,11 +52,73 @@
         line-height: 1.4;
         white-space: pre-wrap;
       }
+      .label {
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+      }
+      .body {
+        white-space: pre-wrap;
+      }
+      .meta {
+        margin-top: 0.25rem;
+        color: var(--muted);
+        font-size: 0.8rem;
+      }
       .user {
         font-weight: 600;
       }
       .bot {
         color: #0f172a;
+      }
+      .thinking {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        color: var(--muted);
+      }
+      .dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: #9ca3af;
+        animation: pulse 1s infinite ease-in-out;
+      }
+      .dot:nth-child(2) { animation-delay: 0.15s; }
+      .dot:nth-child(3) { animation-delay: 0.3s; }
+      @keyframes pulse {
+        0%, 80%, 100% { transform: scale(0.7); opacity: 0.5; }
+        40% { transform: scale(1); opacity: 1; }
+      }
+      .json-pre {
+        margin: 0;
+        padding: 0.75rem;
+        border-radius: 10px;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        overflow-x: auto;
+        font-size: 0.85rem;
+      }
+      .swatches {
+        margin-top: 0.5rem;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.45rem;
+      }
+      .swatch {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        border: 1px solid #d1d5db;
+        border-radius: 999px;
+        padding: 0.12rem 0.5rem 0.12rem 0.25rem;
+        background: #fff;
+        font-size: 0.75rem;
+      }
+      .swatch-dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        border: 1px solid rgba(0, 0, 0, 0.15);
       }
       form {
         display: flex;
@@ -100,13 +162,103 @@
       const chat = document.getElementById("chat");
       const form = document.getElementById("chat-form");
       const promptInput = document.getElementById("prompt");
+      const HEX_RE = /#[0-9A-Fa-f]{6}\b/g;
 
-      function addMessage(role, text) {
+      function uniqueHexColors(value) {
+        const text = typeof value === "string" ? value : JSON.stringify(value);
+        const matches = text.match(HEX_RE) || [];
+        return [...new Set(matches.map((m) => m.toUpperCase()))];
+      }
+
+      function renderSwatches(container, source) {
+        const colors = uniqueHexColors(source);
+        if (!colors.length) return;
+        const swatches = document.createElement("div");
+        swatches.className = "swatches";
+        colors.forEach((hex) => {
+          const chip = document.createElement("span");
+          chip.className = "swatch";
+          const dot = document.createElement("span");
+          dot.className = "swatch-dot";
+          dot.style.backgroundColor = hex;
+          const label = document.createElement("span");
+          label.textContent = hex;
+          chip.appendChild(dot);
+          chip.appendChild(label);
+          swatches.appendChild(chip);
+        });
+        container.appendChild(swatches);
+      }
+
+      function addMessage(role, text, usage = null, jsonData = null) {
         const el = document.createElement("div");
         el.className = `msg ${role}`;
-        el.textContent = `${role === "user" ? "You" : "App"}: ${text}`;
+        const label = document.createElement("div");
+        label.className = "label";
+        label.textContent = role === "user" ? "You" : "App";
+        el.appendChild(label);
+
+        const body = document.createElement("div");
+        body.className = "body";
+        if (role === "bot" && jsonData) {
+          const pre = document.createElement("pre");
+          pre.className = "json-pre";
+          pre.textContent = JSON.stringify(jsonData, null, 2);
+          body.appendChild(pre);
+          renderSwatches(body, jsonData);
+        } else {
+          let parsed = null;
+          if (role === "bot") {
+            try {
+              parsed = JSON.parse(text);
+            } catch {
+              parsed = null;
+            }
+          }
+          if (parsed && (typeof parsed === "object")) {
+            const pre = document.createElement("pre");
+            pre.className = "json-pre";
+            pre.textContent = JSON.stringify(parsed, null, 2);
+            body.appendChild(pre);
+            renderSwatches(body, parsed);
+          } else {
+            body.textContent = text ?? "";
+            if (role === "bot") renderSwatches(body, text ?? "");
+          }
+        }
+        el.appendChild(body);
+
+        if (usage && role === "bot") {
+          const meta = document.createElement("div");
+          meta.className = "meta";
+          meta.textContent =
+            `Usage: in ${usage.input_tokens ?? 0}, out ${usage.output_tokens ?? 0}, total ${usage.total_tokens ?? 0} tokens`;
+          el.appendChild(meta);
+        }
         chat.appendChild(el);
         chat.scrollTop = chat.scrollHeight;
+      }
+
+      function addThinking() {
+        const el = document.createElement("div");
+        el.className = "msg bot";
+        el.id = "thinking-msg";
+        el.innerHTML = `
+          App:
+          <span class="thinking">
+            thinking
+            <span class="dot"></span>
+            <span class="dot"></span>
+            <span class="dot"></span>
+          </span>
+        `;
+        chat.appendChild(el);
+        chat.scrollTop = chat.scrollHeight;
+      }
+
+      function removeThinking() {
+        const el = document.getElementById("thinking-msg");
+        if (el) el.remove();
       }
 
       form.addEventListener("submit", async (e) => {
@@ -116,14 +268,32 @@
 
         addMessage("user", message);
         promptInput.value = "";
+        promptInput.disabled = true;
+        form.querySelector("button").disabled = true;
+        addThinking();
 
-        const res = await fetch("/api/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message }),
-        });
-        const data = await res.json();
-        addMessage("bot", data.reply || "No response.");
+        try {
+          const res = await fetch("/api/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ message }),
+          });
+          const data = await res.json();
+          removeThinking();
+          addMessage(
+            "bot",
+            data.reply || "No response.",
+            data.usage || null,
+            data.json_data || null
+          );
+        } catch (err) {
+          removeThinking();
+          addMessage("bot", `Request error: ${err}`);
+        } finally {
+          promptInput.disabled = false;
+          form.querySelector("button").disabled = false;
+          promptInput.focus();
+        }
       });
     </script>
   </body>
