@@ -52,7 +52,7 @@ if (-not $branch) {
     exit 0
 }
 
-git rev-parse --abbrev-ref --symbolic-full-name "@{u}" *> $null
+cmd /c "git rev-parse --abbrev-ref --symbolic-full-name @{u} >NUL 2>NUL"
 if ($LASTEXITCODE -eq 0) {
     git push
     exit 0
